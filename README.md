@@ -8,6 +8,20 @@ By digging through underground passages, collecting geographical
 clues, and identifying countries on a world map, the player
 gradually discovers where she is being held.
 
+## Meet the Characters
+
+![The prince and princess of Dig & Rescue](assets/characters/characters.png)
+
+Meet the two characters at the heart of the adventure:
+
+- **The Prince:** Equipped with a shovel and a backpack of bombs,
+  he explores underground passages and follows geographical clues.
+- **The Princess:** Waiting in a distant castle, she has left behind
+  clues that guide the player towards her location.
+
+The characters also appear in the game's opening and ending animations.
+Their story and visual presentation will continue to develop in future updates. 
+
 ## Gameplay
 
 - Navigate a grid using cardinal directions and location references.
@@ -42,7 +56,7 @@ Keyboard and on-screen controls are included for desktop and mobile play.
 
 ## Play the Current Prototype
 
-[Play Dig & Rescue](YOUR_GITHUB_PAGES_URL)
+[🎮 Play Dig & Rescue](https://yagmurakgul.github.io/geogame-dig-and-rescue/)
 
 This link provides access to the current development version.
 The game is still a work in progress and may contain incomplete
