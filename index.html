@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prensesin İzinde — Kayıp Koordinatlar</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./game.js" defer></script>
+  <script src="./surface.js" defer></script>
+    <script src="./cinematics.js" defer></script>
+
+</head>
+
+<body>
+  <main class="game">
+    <header class="heading">
+      <div>
+        <p class="eyebrow">BİR COĞRAFYA MASALI</p>
+        <h1>Prensesin İzinde</h1>
+      </div>
+      <span class="badge">Bölüm 01 · Kayıp Geçit</span>
+    </header>
+
+    <section class="note">
+      <span class="note-icon" aria-hidden="true">📜</span>
+      <div>
+        <h2>Haritadan düşen not</h2>
+        <p>
+          Başlangıç taşından <strong>5 kare doğuya</strong>,
+          ardından <strong>2 kare kuzeye</strong> ilerle.
+          Gizli geçit o karede saklı.
+        </p>
+        <small>Başlangıç taşı: B6 · Her kare 10 × 10 metre</small>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="Oyun bilgileri">
+      <span>Konum: <strong id="position">B6</strong></span>
+      <span>Yön: <strong id="direction">Doğu</strong></span>
+      <span>İşaretin: <strong id="marker">Yok</strong></span>
+      <button id="soundButton" type="button" aria-pressed="true">
+        Ses: Açık
+      </button>
+    </section>
+
+    <section class="board-frame" aria-label="Kazı planı">
+      <canvas
+        id="gameCanvas"
+        width="1000"
+        height="760"
+        tabindex="0"
+        aria-label="Kazı alanı. Komşu kareye dokunarak kaz veya yürü. Ok tuşları ve Space de kullanılabilir."
+      >
+        Bu oyun Canvas destekleyen bir tarayıcı gerektirir.
+      </canvas>
+
+      <div id="finishPanel" class="finish-panel" hidden>
+        <div class="finish-card">
+          <span class="portal-icon" aria-hidden="true">✨</span>
+          <h2>Geçidi buldun!</h2>
+          <p id="finishText"></p>
+          <p>
+            Geçidin ötesinden gün ışığı geliyor…
+            Yolculuğumuzun sonraki durağı yüzey!
+          </p>
+          <button id="restartButton" type="button">
+            Bölümü tekrar oyna
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div class="equipment-bar" aria-label="Ekipman seçimi">
+  <button id="selectShovel" type="button" aria-pressed="true">
+    ⛏ Kürek · 1
+  </button>
+
+  <button id="selectBomb" type="button" aria-pressed="false">
+    💣 Bomba · 2 — <span id="digBombCount">0</span>
+  </button>
+</div>
+    <nav class="touch-controls" aria-label="Kazı kontrolleri">
+      <button type="button" data-move="north" class="control-north" aria-label="Kuzeye ilerle veya dön">↑</button>
+      <button type="button" data-move="west" class="control-west" aria-label="Batıya ilerle veya dön">←</button>
+      <button type="button" id="digButton" class="control-dig">⛏ Kaz</button>
+      <button type="button" data-move="east" class="control-east" aria-label="Doğuya ilerle veya dön">→</button>
+      <button type="button" data-move="south" class="control-south" aria-label="Güneye ilerle veya dön">↓</button>
+    </nav>
+
+    <p id="status" role="status">Kazı alanı hazırlanıyor…</p>
+    <details id="clueNotebook" class="clue-notebook">
+  <summary>
+    📖 Prensesin notları · <span id="clueCount">0</span>
+  </summary>
+
+  <p>Bu notlar prensesin bulunduğu ülkeyi anlatıyor.</p>
+
+  <p id="emptyClues">Henüz bir not bulamadın. Kazmaya devam et!</p>
+
+  <ul id="clueList"></ul>
+</details>
+
+    <footer class="help">
+      <span><b>WASD / Oklar</b> hareket ve yön</span>
+      <span><b>Space</b> bir kürek darbesi</span>
+<span><b>Yan kareye dokun</b> kaz veya yürü</span>
+<span><b>Uzak kareye dokun</b> hedef işaretle</span>    </footer>
+
+    <p class="map-note">
+      Yerel kazı planı · Kuzey yukarıdadır · A–L sütun, 1–9 satır adresidir.
+    </p>
+  </main>
+</body>
+</html>
