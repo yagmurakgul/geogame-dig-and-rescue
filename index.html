@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Prensesin İzinde — Kayıp Koordinatlar</title>
   <link rel="stylesheet" href="./style.css">
+  <script src="./i18n.js" defer></script>
   <script src="./game.js" defer></script>
   <script src="./surface.js" defer></script>
     <script src="./cinematics.js" defer></script>
@@ -12,6 +13,13 @@
 </head>
 
 <body>
+  <nav class="language-bar" aria-label="Language / Dil" data-no-translate>
+    <label for="languageSelect">Dil / Language</label>
+    <select id="languageSelect">
+      <option value="tr" lang="tr">Türkçe</option>
+      <option value="en" lang="en">English</option>
+    </select>
+  </nav>
   <main class="game">
     <header class="heading">
       <div>
@@ -21,6 +29,13 @@
       <span class="badge">Bölüm 01 · Kayıp Geçit</span>
     </header>
 
+    <details class="clue-notebook rules-panel">
+      <summary>Nasıl oynanır? · Süre ve puan</summary>
+      <p>Kazı süresizdir. Yön tarifini izle, notları topla ve geçidi bul.</p>
+      <p>Harita ilk kez yüklendiğinde 60 saniyen başlar; fotoğrafa dönmek veya sekme değiştirmek süreyi durdurmaz. Normal ülkede tek tahmin, finalde aynı süre içinde üç hak vardır.</p>
+      <p>Doğru ülke: 100 + kalan saniye × 2 puan ve bir bomba. Final: 300 + kalan saniye × 2 puan. Normal turda süre biterse kazıya dönersin; finalde süre veya haklar biterse oyun sona erer.</p>
+      <p>Prensesi bulmak için coğrafi ipuçlarını birleştir. Rekorlar yolculuk uzunluğuna göre bu tarayıcıda ayrı saklanır. Videolar süreye dahil değildir.</p>
+    </details>
     <section class="note">
       <span class="note-icon" aria-hidden="true">📜</span>
       <div>
@@ -35,6 +50,7 @@
     </section>
 
     <section class="toolbar" aria-label="Oyun bilgileri">
+      <span>Puan: <strong id="digScore">0</strong></span>
       <span>Konum: <strong id="position">B6</strong></span>
       <span>Yön: <strong id="direction">Doğu</strong></span>
       <span>İşaretin: <strong id="marker">Yok</strong></span>
@@ -102,7 +118,7 @@
 
     <footer class="help">
       <span><b>WASD / Oklar</b> hareket ve yön</span>
-      <span><b>Space</b> bir kürek darbesi</span>
+      <span><b>Space</b> seçili ekipmanı kullan</span>
 <span><b>Yan kareye dokun</b> kaz veya yürü</span>
 <span><b>Uzak kareye dokun</b> hedef işaretle</span>    </footer>
 

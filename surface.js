@@ -23,13 +23,22 @@
   let offsetY = 0;
   let pointerStart = null;
   let dragged = false;
+  let score = 0;
+  let lives = 3;
+  let deadline = null;
+  let timerId = null;
+  let secondsLeft = 60;
+  let loadingMap = false;
+  let campaignOver = false;
+  const recordKey = () => `geogame-record-v3-${finalVisit}`;
+  let record = 0;
 
   window.geoGameInventory = window.geoGameInventory || {
     bombs: 0
   };
 
   // İtalya ilk geçitte gelmez.
-  const finalVisit = 2 + Math.floor(Math.random() * 3);
+  const finalVisit = 3 + Math.floor(Math.random() * 3);
 
   const italy = {
     code: "ITA",
@@ -38,6 +47,8 @@
   };
 
   const isFinal = () => activeCountry?.code === "ITA";
+  try { record = Math.max(0, Number(localStorage.getItem(recordKey())) || 0); } catch {}
+
 
   const landmarkCountries = [
     {
@@ -228,6 +239,84 @@
   const get = id => document.getElementById(id);
   const container = screen.querySelector(".surface-container");
 
+  const hud = document.createElement("section");
+  hud.className = "quest-hud";
+  hud.setAttribute("aria-label", "Puan, süre ve haklar");
+  hud.innerHTML = `<span>Puan <b id="questScore">0</b></span>
+    <span>Süre <b id="questTime">60</b> sn</span>
+    <span id="questLivesBox" hidden>Hak <b id="questLives">3</b></span>
+    <span>Rekor <b id="questRecord">0</b></span>`;
+  container.insertBefore(hud, get("landmarkScene"));
+
+  function updateHud() {
+    get("questScore").textContent = score;
+    get("questTime").textContent = secondsLeft;
+    get("questLives").textContent = lives;
+    get("questLivesBox").hidden = !isFinal();
+    get("questRecord").textContent = record;
+    hud.classList.toggle("time-critical", deadline !== null && secondsLeft <= 10);
+    window.dispatchEvent(new CustomEvent("geogame:score", {detail:{score,record}}));
+  }
+
+  function stopTimer() {
+    clearInterval(timerId);
+    timerId = null;
+    deadline = null;
+  }
+
+  function startTimer() {
+    if (deadline !== null || answered || campaignOver || !countries.length) return;
+    deadline = performance.now() + 60000;
+    timerId = setInterval(checkTime, 100);
+    updateHud();
+  }
+
+  function checkTime() {
+    if (deadline === null) return false;
+    secondsLeft = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
+    updateHud();
+    if (secondsLeft > 0) return false;
+    stopTimer();
+    answered = true;
+    if (isFinal()) showFailure("Süre doldu. Prensese bu kez ulaşamadın.");
+    else {
+      get("landmarkScene").hidden = true;
+      get("worldMapScene").hidden = false;
+      get("mapMessage").textContent = `Süre doldu! Doğru ülke: ${activeCountry.name}. Bu tur ödül yok.`;
+      get("confirmCountry").disabled = true;
+      get("nextChapterNote").hidden = false;
+      get("nextChapterNote").textContent = "Yeni bir geçit bulmak için kazıya dön.";
+      returnButton.hidden = false;
+      drawMap();
+    }
+    return true;
+  }
+
+  function saveRecord() {
+    record = Math.max(record, score);
+    try { localStorage.setItem(recordKey(), String(record)); } catch {}
+    updateHud();
+  }
+
+  function showFailure(reason) {
+    campaignOver = true;
+    answered = true;
+    stopTimer();
+    saveRecord();
+    get("landmarkScene").hidden = true;
+    get("worldMapScene").hidden = true;
+    returnButton.hidden = true;
+    rescueScene.hidden = false;
+    rescueScene.querySelector("h1").textContent = "Macera sona erdi";
+    rescueScene.querySelector(".rescue-caption").textContent = reason;
+    rescueScene.querySelectorAll(".rescue-caption")[1].textContent =
+      `Puanın: ${score} · ${finalVisit} geçitlik oyun rekoru: ${record}. Yeniden deneyebilirsin!`;
+    get("rescuedCastle").hidden = true;
+    surfaceNotebook.open = false;
+    screen.scrollTop = 0;
+    rescueScene.querySelector("h1").focus();
+  }
+
   // Toplanan ipuçları.
   const surfaceNotebook = document.createElement("details");
   surfaceNotebook.className = "clue-notebook surface-notebook";
@@ -245,7 +334,7 @@
 
     document.querySelectorAll("#clueList li").forEach(item => {
       const copy = document.createElement("li");
-      copy.textContent = item.textContent;
+      copy.textContent = window.geoGameI18n.originalText(item);
       surfaceClueList.appendChild(copy);
     });
 
@@ -419,7 +508,7 @@
 
   castleScene.innerHTML = `
     <div class="castle-building">
-      <span class="castle-window">👸</span>
+      <span class="castle-window"><span class="princess-portrait" role="img" aria-label="Tasarladığımız taçlı prenses"></span></span>
       <span class="castle-door"></span>
     </div>
   `;
@@ -457,6 +546,12 @@
   });
 
   function showRescue() {
+    campaignOver = true;
+    stopTimer();
+    saveRecord();
+    rescueScene.querySelectorAll(".rescue-caption")[1].textContent =
+      `Puanın: ${score} · ${finalVisit} geçitlik oyun rekoru: ${record}. Sonunda yeniden bir aradasınız!`;
+    get("rescuedCastle").hidden = false;
     get("landmarkScene").hidden = true;
     get("worldMapScene").hidden = true;
     returnButton.hidden = true;
@@ -568,6 +663,8 @@
   }
 
   async function loadMap() {
+    if (loadingMap) return;
+    loadingMap = true;
     get("retryMap").hidden = true;
     get("mapMessage").textContent = "Dünya sınırları yükleniyor…";
 
@@ -587,8 +684,18 @@
       }
 
       countries = data.features;
+      // Register country names before rendering labels or selection feedback.
+      let englishNames;
+      try { englishNames = new Intl.DisplayNames(["en"], {type:"region"}); } catch {}
+      for (const feature of countries) {
+        const code = feature.properties["ISO3166-1-Alpha-2"];
+        let englishName = feature.properties.name;
+        try { if (/^[A-Z]{2}$/.test(code) && englishNames) englishName = englishNames.of(code); } catch {}
+        if (englishName) window.geoGameI18n.register(nameOf(feature), englishName);
+      }
       prepareShapes();
       drawMap();
+      startTimer();
 
       get("mapMessage").textContent =
         "Haritadan bir ülke seç. Henüz tahmin yapmadın.";
@@ -601,8 +708,10 @@
         new URL("./assets/countries.geojson", document.baseURI).href;
 
       get("retryMap").hidden = false;
-    }
+    } finally { loadingMap = false; }
   }
+
+  window.addEventListener("geogame:language", () => { if (countries.length) drawMap(); });
 
   function drawMap() {
     const width = mapCanvas.width;
@@ -661,7 +770,7 @@
       if (!shape.label || shape.label.area * zoom * zoom < 850) continue;
 
       mapContext.fillText(
-        nameOf(shape.feature),
+        window.geoGameI18n.t(nameOf(shape.feature)),
         shape.label.x,
         shape.label.y
       );
@@ -787,7 +896,7 @@
     get("worldMapScene").hidden = false;
 
     if (!countries.length) loadMap();
-    else drawMap();
+    else { drawMap(); startTimer(); }
   });
 
   get("seeLandmark").addEventListener("click", () => {
@@ -798,7 +907,9 @@
   get("retryMap").addEventListener("click", loadMap);
 
   get("confirmCountry").addEventListener("click", () => {
-    if (!selectedCountry || answered || !activeCountry) return;
+    if (!selectedCountry || answered || !activeCountry || campaignOver) return;
+    if (checkTime()) return;
+    if (deadline === null) return;
 
     const selectedCode =
       selectedCountry.properties["ISO3166-1-Alpha-3"];
@@ -808,6 +919,9 @@
     // Finalde yanlış cevap sonrası tekrar denemeye izin ver.
     if (isFinal()) {
       if (!correct) {
+        lives -= 1;
+        updateHud();
+        if (lives === 0) { showFailure("Üç tahmin hakkın da bitti. Notlarını kullanarak yeniden dene."); return; }
         get("mapMessage").textContent =
           "Kapı açılmadı. Notlarını yeniden inceleyip " +
           "başka bir ülke seçebilirsin.";
@@ -821,14 +935,20 @@
       }
 
       answered = true;
+      score += 300 + secondsLeft * 2;
+      stopTimer();
+      updateHud();
       drawMap();
       showRescue();
       return;
     }
 
     answered = true;
+    stopTimer();
 
     if (correct) {
+      score += 100 + secondsLeft * 2;
+      updateHud();
       landmarkPhoto.classList.remove("is-blurred");
       landmarkPhoto.alt = activeCountry.landmark;
 
@@ -871,7 +991,9 @@
   });
 
   returnButton.addEventListener("click", () => {
-    if (!answered || isFinal()) return;
+    if (!answered || isFinal() || campaignOver) return;
+    stopTimer();
+    secondsLeft = 60;
 
     returnButton.hidden = true;
     screen.hidden = true;
@@ -910,7 +1032,7 @@
 
   window.addEventListener("geogame:surface", event => {
     // Yüzey yalnızca kazıdaki geçide ulaşıldığında açılır.
-    if (!event.detail || event.detail.portalReached !== true) return;
+    if (!event.detail || event.detail.portalReached !== true || campaignOver) return;
 
     if (!activeCountry) {
       surfaceVisit += 1;
@@ -961,6 +1083,7 @@
       get("bombCount").textContent = window.geoGameInventory.bombs || 0;
     }
 
+    updateHud();
     updateSurfaceNotebook();
     surfaceNotebook.open = isFinal();
 
@@ -974,6 +1097,10 @@
     get("openWorldMap").focus();
   });
 
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) checkTime();
+  });
+  updateHud();
   // Sayfa açılırken kazı ekranında kal.
   screen.hidden = true;
   get("landmarkScene").hidden = false;

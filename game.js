@@ -26,11 +26,53 @@
   // B6 = column: 1, row: 5
   const START = { column: 1, row: 5 };
 
-  // Başlangıçtan 5 doğu, 2 kuzey.
+  // İlk reset sırasında başlangıç ve geçit birlikte rastgele seçilir.
   const EXIT = {
     column: START.column + 5,
     row: START.row - 2
   };
+
+  let route = null;
+  const usedRoutes = new Set();
+  let lastRoute = "";
+  try { lastRoute = localStorage.getItem("geogame-last-route-v1") || ""; } catch {}
+
+  function chooseRoute() {
+    const candidates = [];
+    for (let x = 1; x < COLS - 1; x++) {
+      for (let y = 1; y < ROWS - 1; y++) {
+        for (let ex = 0; ex < COLS; ex++) {
+          for (let ey = 0; ey < ROWS; ey++) {
+            const dx = ex - x, dy = ey - y;
+            const distance = Math.abs(dx) + Math.abs(dy);
+            if (Math.abs(dx) < 2 || Math.abs(dy) < 2 || distance < 7 || distance > 12) continue;
+            for (const horizontalFirst of [true, false]) {
+              const signature = `${dx},${dy},${horizontalFirst}`;
+              if (usedRoutes.has(signature) || signature === lastRoute) continue;
+              if (route && (route.x === x && route.y === y || route.ex === ex && route.ey === ey)) continue;
+              candidates.push({x,y,ex,ey,dx,dy,horizontalFirst,signature});
+            }
+          }
+        }
+      }
+    }
+    route = candidates[Math.floor(Math.random() * candidates.length)];
+    usedRoutes.add(route.signature);
+    lastRoute = route.signature;
+    try { localStorage.setItem("geogame-last-route-v1", lastRoute); } catch {}
+    START.column = route.x; START.row = route.y;
+    EXIT.column = route.ex; EXIT.row = route.ey;
+  }
+
+  function describeRoute() {
+    const horizontal = `${Math.abs(route.dx)} kare ${route.dx > 0 ? "doğuya" : "batıya"}`;
+    const vertical = `${Math.abs(route.dy)} kare ${route.dy > 0 ? "güneye" : "kuzeye"}`;
+    const steps = route.horizontalFirst ? [horizontal, vertical] : [vertical, horizontal];
+    document.querySelector(".note p").textContent =
+      `Başlangıç taşından ${steps[0]}, ardından ${steps[1]} ilerle. Gizli geçit o karede saklı.`;
+    document.querySelector(".note small").textContent =
+      `Başlangıç taşı: ${address(START.column, START.row)} · Her kare 10 × 10 metre`;
+  }
 
   const directions = {
     north: { dc: 0, dr: -1, label: "Kuzey" },
@@ -100,10 +142,10 @@ function placeClueNotes() {
 
   if (remaining.length === 0) return;
 
-  // Başlangıç odasının hemen doğusundaki toprak.
+  // Yön tarifinin ilk ayağında, başlangıç odasının dışındaki toprak.
   buriedNotes.push({
-    column: START.column + 2,
-    row: START.row,
+    column: START.column + (route.horizontalFirst ? 2 * Math.sign(route.dx) : 0),
+    row: START.row + (route.horizontalFirst ? 0 : 2 * Math.sign(route.dy)),
     clueId: remaining[0]
   });
 
@@ -197,7 +239,7 @@ function updateEquipment() {
 }
 
 function selectTool(tool) {
-  if (won) return;
+  if (won || window.geoGameCinematicPlaying) return;
 
   selectedTool = tool;
   updateEquipment();
@@ -210,7 +252,7 @@ function selectTool(tool) {
 }
 
 function useTool() {
-  if (won) return;
+  if (won || window.geoGameCinematicPlaying) return;
 
   if (selectedTool === "shovel") {
     dig();
@@ -282,6 +324,7 @@ function explodeBomb(now) {
       ? "Patlama geçidi ortaya çıkardı! İçine doğru ilerle."
       : "Patlama çevredeki toprağı açtı!"
   );
+  if (player.column === EXIT.column && player.row === EXIT.row) finishLevel();
 }
 
 function drawBomb(now) {
@@ -344,14 +387,16 @@ function drawBomb(now) {
   }
 
   function resetGame() {
+    chooseRoute();
+    describeRoute();
     // hp: 3 = sağlam toprak, hp: 0 = açık alan
     world = Array.from({ length: ROWS }, () =>
       Array.from({ length: COLS }, () => ({ hp: 3 }))
     );
 
     // Başlangıçta küçük bir oda açık.
-    for (let row = 4; row <= 6; row++) {
-      for (let column = 0; column <= 2; column++) {
+    for (let row = START.row - 1; row <= START.row + 1; row++) {
+      for (let column = START.column - 1; column <= START.column + 1; column++) {
         world[row][column].hp = 0;
       }
     }
@@ -359,7 +404,7 @@ function drawBomb(now) {
     player = {
       column: START.column,
       row: START.row,
-      facing: "east"
+      facing: route.horizontalFirst ? (route.dx > 0 ? "east" : "west") : (route.dy > 0 ? "south" : "north")
     };
 
         marker = null;
@@ -389,7 +434,7 @@ updateNotebook();
   }
 
   function move(directionName) {
-    if (won) return;
+    if (won || window.geoGameCinematicPlaying) return;
     player.facing = directionName;
     updateInfo();
 
@@ -492,7 +537,7 @@ updateNotebook();
   }
 
   function dig() {
-    if (won) return;
+    if (won || window.geoGameCinematicPlaying) return;
     const now = performance.now();
 
     if (now - swingStarted < 200) return;
@@ -618,8 +663,8 @@ updateNotebook();
 
     ctx.font = "13px Arial";
     ctx.fillStyle = "#b9a5c7";
-    ctx.fillText("K ↑", 963, 38);
-    ctx.fillText("10 m / kare", 880, 738);
+    ctx.fillText(window.geoGameI18n.t("K ↑"), 963, 38);
+    ctx.fillText(window.geoGameI18n.t("10 m / kare"), 880, 738);
   }
 
   function drawStart() {
@@ -638,7 +683,7 @@ updateNotebook();
     ctx.fillStyle = "#efddb8";
     ctx.font = "bold 12px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("BAŞ", x, y);
+    ctx.fillText(window.geoGameI18n.t("BAŞ"), x, y);
   }
 
   function drawPortal(now) {
@@ -798,7 +843,7 @@ drawBomb(now);
 
     event.preventDefault();
 
-    if (won) return;
+    if (won || window.geoGameCinematicPlaying) return;
 
     if (event.code === "Space") {
       if (!event.repeat) useTool();
@@ -815,7 +860,7 @@ drawBomb(now);
   });
 
 canvas.addEventListener("click", (event) => {
-  if (won) return;
+  if (won || window.geoGameCinematicPlaying) return;
 
   canvas.focus({ preventScroll: true });
 
@@ -923,43 +968,10 @@ window.addEventListener("geogame:return-to-dig", () => {
 
   diggingRound += 1;
 
-  // Yeni geçit başlangıç odasının dışında olsun.
-  // Önceki geçidin bulunduğu kareyi tekrar seçme.
-  const candidates = [];
-
-  for (let row = 1; row <= 7; row++) {
-    for (let column = 5; column <= 10; column++) {
-      if (column === EXIT.column && row === EXIT.row) continue;
-      if (row === START.row) continue;
-
-      candidates.push({ column, row });
-    }
-  }
-
-  const nextExit =
-    candidates[Math.floor(Math.random() * candidates.length)];
-
-  EXIT.column = nextExit.column;
-  EXIT.row = nextExit.row;
-
-  // Toprakları, karakteri ve kazı efektlerini sıfırla.
   resetGame();
-
-  const eastSteps = EXIT.column - START.column;
-  const verticalSteps = Math.abs(EXIT.row - START.row);
-  const verticalDirection =
-    EXIT.row < START.row ? "kuzeye" : "güneye";
-
   document.querySelector(".badge").textContent =
     `Bölüm ${String(diggingRound).padStart(2, "0")} · Kayıp Geçit`;
-
-  document.querySelector(".note h2").textContent =
-    "Yeni tünel, yeni bir yön tarifi";
-
-  document.querySelector(".note p").innerHTML =
-    `Başlangıç taşından <strong>${eastSteps} kare doğuya</strong>, ` +
-    `ardından <strong>${verticalSteps} kare ${verticalDirection}</strong> ` +
-    "ilerle. Gizli geçit o karede saklı.";
+  document.querySelector(".note h2").textContent = "Yeni tünel, yeni bir yön tarifi";
 
   const inventory = window.geoGameInventory || { bombs: 0 };
 
@@ -1016,6 +1028,9 @@ window.addEventListener("geogame:return-to-dig", () => {
 });
 
 updateEquipment();
+  window.addEventListener("geogame:score", event => {
+    document.getElementById("digScore").textContent = event.detail.score;
+  });
   resetGame();
   character.src = "./assets/characters/characters.png";
   requestAnimationFrame(render);

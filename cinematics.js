@@ -2,6 +2,24 @@
 
 (() => {
   function setupCinematics() {
+    const closingCopy = {
+      tr: {
+        introTitle: "Yolculuk şimdi başlıyor…",
+        introText: "Uzak bir kalede seni bekliyor. Notların izini sür, gizli geçitleri bul ve ona ulaş.",
+        introButton: "Yolculuğa başla →",
+        endingTitle: "Sonunda yeniden bir aradasınız.",
+        endingText: "Toprağın altından, uzak ülkelerin içinden… Bulduğun her ipucu seni ona bir adım daha yaklaştırdı.",
+        endingButton: "Sonuçları gör →"
+      },
+      en: {
+        introTitle: "Your journey begins…",
+        introText: "She is waiting in a distant castle. Follow the notes, uncover hidden passages, and find your way to her.",
+        introButton: "Begin the journey →",
+        endingTitle: "Together, at last.",
+        endingText: "Beneath the earth, across distant lands… Every clue brought you one step closer to her.",
+        endingButton: "View results →"
+      }
+    };
     const style = document.createElement("style");
 
     style.textContent = `
@@ -16,6 +34,26 @@
         color: #fff;
       }
 
+      .cinematic-overlay { opacity: 1; transition: opacity 700ms ease; }
+      .cinematic-overlay.is-leaving { opacity: 0; pointer-events: none; }
+      .cinematic-postlude {
+        position: absolute; inset: 0; z-index: 3;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; gap: 22px; overflow-y: auto;
+        padding: 90px 24px 40px; text-align: center;
+        background: radial-gradient(ellipse at center, #221b32eb, #080b12fa);
+        opacity: 0; transition: opacity 900ms ease;
+      }
+      .cinematic-postlude.is-visible { opacity: 1; }
+      .cinematic-postlude[hidden] { display: none !important; }
+      .cinematic-postlude h2 { max-width: 760px; margin: 0; color: #edcc94;
+        font: 500 clamp(30px, 6vw, 58px)/1.15 Georgia, serif; }
+      .cinematic-postlude p { max-width: 570px; margin: 0; color: #eee5f3;
+        font: 400 clamp(17px, 3vw, 22px)/1.7 system-ui, sans-serif; }
+      .cinematic-postlude button { margin-top: 14px; }
+      @media (prefers-reduced-motion: reduce) {
+        .cinematic-overlay, .cinematic-postlude { transition: none; }
+      }
       .cinematic-overlay[hidden] {
         display: none !important;
       }
@@ -29,7 +67,7 @@
 
       .cinematic-actions {
         position: absolute;
-        top: max(18px, env(safe-area-inset-top));
+        top: calc(76px + env(safe-area-inset-top));
         right: max(18px, env(safe-area-inset-right));
         display: flex;
         gap: 10px;
@@ -65,6 +103,7 @@
         background: rgba(8, 11, 18, 0.7);
       }
 
+      .cinematic-actions[hidden],
       .cinematic-prompt[hidden] {
         display: none !important;
       }
@@ -112,6 +151,11 @@
         </button>
       </div>
 
+      <section class="cinematic-postlude" data-no-translate hidden aria-labelledby="cinematicClosingTitle">
+        <h2 id="cinematicClosingTitle" tabindex="-1"></h2>
+        <p class="cinematic-closing-text"></p>
+        <button type="button" class="cinematic-button cinematic-start cinematic-continue"></button>
+      </section>
       <div class="cinematic-actions">
         <button
           type="button"
@@ -137,7 +181,48 @@
     const skipButton = overlay.querySelector(".cinematic-skip");
     const soundButton = overlay.querySelector(".cinematic-sound");
 
+    const postlude = overlay.querySelector(".cinematic-postlude");
+    const closingTitle = overlay.querySelector("#cinematicClosingTitle");
+    const closingText = overlay.querySelector(".cinematic-closing-text");
+    const continueButton = overlay.querySelector(".cinematic-continue");
+    const actions = overlay.querySelector(".cinematic-actions");
+    let phase = "idle";
+    let currentIsEnding = false;
+    let closeTimer = null;
     let active = false;
+
+    function updateClosingCopy() {
+      const language = window.geoGameI18n?.language === "en" ? "en" : "tr";
+      const copy = closingCopy[language];
+      const prefix = currentIsEnding ? "ending" : "intro";
+      postlude.lang = language;
+      closingTitle.textContent = copy[prefix + "Title"];
+      closingText.textContent = copy[prefix + "Text"];
+      continueButton.textContent = copy[prefix + "Button"];
+    }
+    window.addEventListener("geogame:language", updateClosingCopy);
+
+    function showPostlude() {
+      if (!active || phase === "postlude" || phase === "closing") return;
+      phase = "postlude";
+      video.pause();
+      prompt.hidden = true;
+      actions.hidden = true;
+      updateClosingCopy();
+      postlude.hidden = false;
+      // Keep the final video frame under the fading card.
+      void postlude.offsetWidth;
+      postlude.classList.add("is-visible");
+      continueButton.focus();
+    }
+    function closeWithFade() {
+      if (!active || phase === "closing") return;
+      phase = "closing";
+      continueButton.disabled = true;
+      overlay.classList.add("is-leaving");
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      closeTimer = setTimeout(finishVideo, reduced ? 0 : 700);
+    }
     let previousOverflow = "";
     let previousFocus = null;
     let endingShown = false;
@@ -150,13 +235,14 @@
       if (event.type === "keydown" && event.key === "Escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
-        finishVideo();
+        if (phase === "postlude") closeWithFade();
+        else if (phase !== "closing") showPostlude();
         return;
       }
 
       // Klavye odağını video penceresinin içinde tut.
       if (event.type === "keydown" && event.key === "Tab") {
-        const buttons = [...overlay.querySelectorAll("button")]
+        const buttons = [document.getElementById("languageSelect"), ...overlay.querySelectorAll("button")]
           .filter(button => button.getClientRects().length > 0);
 
         if (buttons.length) {
@@ -190,16 +276,17 @@
     }
 
     async function playVideo() {
+      if (!active || phase !== "video") return;
       const currentId = playbackId;
       prompt.hidden = true;
 
       try {
         await video.play();
 
-        if (!active || currentId !== playbackId) return;
+        if (!active || phase !== "video" || currentId !== playbackId) return;
         skipButton.focus();
       } catch {
-        if (!active || currentId !== playbackId) return;
+        if (!active || phase !== "video" || currentId !== playbackId) return;
 
         prompt.hidden = false;
         message.textContent =
@@ -213,6 +300,13 @@
       if (active) finishVideo();
 
       playbackId += 1;
+      phase = "video";
+      currentIsEnding = isEnding;
+      postlude.hidden = true;
+      postlude.classList.remove("is-visible");
+      overlay.classList.remove("is-leaving");
+      actions.hidden = false;
+      continueButton.disabled = false;
       active = true;
       window.geoGameCinematicPlaying = true;
 
@@ -237,7 +331,9 @@
         ? "Sonuca geç →"
         : "Hikâyeyi atla →";
 
-              video.src = path;
+      video.defaultPlaybackRate = 1;
+      video.playbackRate = 1;
+      video.src = path;
       video.load();
 
       updateSoundButton();
@@ -251,6 +347,8 @@
     function finishVideo() {
       if (!active) return;
 
+      clearTimeout(closeTimer);
+      phase = "idle";
       active = false;
       playbackId += 1;
       window.geoGameCinematicPlaying = false;
@@ -268,8 +366,9 @@
     }
 
     startButton.addEventListener("click", playVideo);
-    skipButton.addEventListener("click", finishVideo);
-    video.addEventListener("ended", finishVideo);
+    skipButton.addEventListener("click", showPostlude);
+    video.addEventListener("ended", showPostlude);
+    continueButton.addEventListener("click", closeWithFade);
 
     soundButton.addEventListener("click", () => {
       video.muted = !video.muted;
@@ -277,7 +376,7 @@
     });
 
     video.addEventListener("error", () => {
-      if (!active) return;
+      if (!active || phase !== "video") return;
 
       prompt.hidden = false;
       startButton.hidden = true;
