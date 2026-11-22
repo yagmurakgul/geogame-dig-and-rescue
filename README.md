@@ -1,119 +1,160 @@
-# Dig & Rescue — A Geography Adventure
+# Dig & Rescue
 
-A browser-based GeoGame developed by **Yağmur Akgül** for **GMT458 — Web GIS**, Hacettepe University.
+**Yağmur Akgül · GMT458 — Web GIS · Hacettepe University**
 
 [Play the game](https://yagmurakgul.github.io/geogame-dig-and-rescue/)
 
-## Story and characters
+## About the game
 
-![The original prince and princess](assets/characters/characters.png)
+Dig & Rescue is a browser game about a prince searching for a princess hidden in a distant castle. I wanted to combine a rescue story with geography, so the player has to dig through tunnels, collect geographical clues and identify countries on a world map.
 
-Follow a prince through underground passages to rescue a princess. Geographical notes reveal her country, while unexpected surface visits challenge the player to identify other countries. The castle window displays the princess from the original character artwork, not an emoji. Opening and ending MP4 sequences tell the story.
+Not every tunnel leads to the princess. Sometimes the prince reaches a different country and sees a blurred photograph of a landmark. Identifying that country correctly earns a bomb, which can be used during the next excavation. At the final castle, the player uses the collected notes to work out where the princess is.
 
-## Functional requirements
+The final country is fixed in this version to match the ending animation. I have left its name out of the description to avoid giving away the answer.
 
-- Navigate a 12-column by 9-row local grid using cardinal directions and cell addresses. Each cell represents 10 × 10 metres in the fictional excavation plan.
-- Dig soil with three individual shovel hits; use earned bombs to clear a 3 × 3 area.
-- Collect underground geographical notes by walking onto revealed note tiles. Bombs reveal notes without destroying them.
-- Identify countries by selecting real GeoJSON polygons on a pan-and-zoom world map.
-- Recognise landmarks from lightly blurred photographs; only a correct answer removes the blur.
-- Apply a 60-second time limit, scoring, three final guesses and persistent local high scores.
-- Support keyboard controls and on-screen buttons, with skippable opening and ending videos.
+![The prince and princess](assets/characters/characters.png)
 
-## Frontend design
+## Game requirements
 
-![Proposed interface layouts](docs/layout.svg)
+The main requirements I used while developing the game were:
 
-The excavation screen contains the direction note, position, score, tool inventory, grid and clue notebook. Surface visits first show a photograph or the castle. A button opens the world map; the timer and score remain visible above both views. The result screen reports the score and offers a new game.
+- A digging area where the player can move, use a shovel and place bombs.
+- Direction instructions and grid references that help the player find a hidden passage.
+- Collectible notes containing geographical clues about the final destination.
+- Landmark photographs and a world map with selectable country boundaries.
+- A time limit, a scoring system and saved high scores.
+- Keyboard controls and on-screen controls for touch input.
+- Opening and ending animations using the game's characters.
 
-## Progression, tasks and lives
+The digging area is a **12 × 9 grid**. Columns are labelled A–L and rows 1–9. Each cell represents 10 × 10 metres in the fictional excavation plan. The player follows cardinal directions, such as east and north, to locate the passage. This grid is a local game map, not a real tunnel between countries.
 
-Each game chooses its final visit randomly from **3, 4 or 5**. Thus there are **3–5 excavation tasks and 3–5 country-identification stages**, with Italy always last. The preceding 2–4 destinations come from a ten-country landmark pool. A shuffled queue stored locally reduces repetition between games. The final location stays fixed in this version, so experienced players may recognise it early.
+The world-map stages use actual country polygons. Together with the direction tasks, landmark recognition and geographical clues, this makes geography part of the gameplay rather than just its background.
 
-Four unique Italy clues concern Europe/the Mediterranean, the boot-shaped mainland, the Alps, and Sicily/Sardinia. Up to two uncollected notes are placed per excavation; a player can miss optional notes. Each excavation randomises both its starting room and buried portal. Routes span 7–12 cells (Manhattan distance), with at least two cells along each axis. The horizontal/vertical order also varies. Relative route instructions do not repeat within a game, and the immediately previous route is excluded across reloads when storage is available. These instructions describe a suggested path; players may dig an alternative route. The challenge changes from landmark recognition to combining collected clues; this version does not claim increasingly difficult generated levels.
+## Frontend layout
 
-Normal surface stages allow **one submitted guess** and have no life penalty: an incorrect answer or timeout ends that stage without reward. The final stage allows **three guesses within one shared 60-second limit**. Three wrong guesses or expiry end the adventure. A correct final answer rescues the princess and plays the ending video.
+![Frontend layout sketch](docs/layout.svg)
 
-## Time and scoring
+The sketch shows the three main parts of the interface:
 
-The timer starts only when the player first opens a successfully loaded map for that visit. Initial photographs, excavation, network loading and cinematics are untimed. Returning to a photograph does not reset or pause the timer. Switching tabs also does not pause it; elapsed time is checked against a monotonic deadline, including immediately before accepting an answer.
+1. **Excavation:** a direction note above the grid, position and equipment information, movement buttons and a notebook for collected clues.
+2. **Surface visit:** a landmark photograph followed by a world-map view. The player can pan, zoom, select a country and confirm a guess. The score and timer remain visible.
+3. **Result:** the rescue or failure message, final score, high score and a button to start again.
 
-| Result | Reward |
-|---|---|
-| Correct normal country | 100 + 2 × remaining whole displayed seconds; one bomb |
-| Wrong normal guess or timeout | No points or bomb; continue digging |
-| Correct final country | 300 + 2 × remaining whole displayed seconds; rescue |
-| Final failure | Game ends with the points already earned |
+A language selector at the top switches the interface between Turkish and English. The videos keep their original audio and embedded text. When a video finishes, a closing message stays on screen until the player chooses to continue.
 
-Scores are non-negative. The displayed seconds use ceiling rounding, so a correct normal stage can award up to 220 points and the final up to 420. Local records are saved when the game ends, separately for 3-, 4- and 5-visit campaigns. These are browser-local scores, not a global or tamper-proof leaderboard. If browser storage is unavailable, gameplay continues without persistent records.
+## Progression and number of tasks
+
+One game contains **3–5 excavation stages and 3–5 country-selection tasks**, depending on when the final passage is reached. Earlier surface destinations are selected from a pool of ten countries. A shuffled queue reduces repeated destinations between games when local storage is available.
+
+The starting position, hidden passage and direction instructions change between excavations. Soil needs three shovel hits to break. A bomb clears a 3 × 3 area, which makes it useful when the player wants to open several cells at once.
+
+There are **four geographical clues** about the final destination. Up to two remaining clues are placed in each excavation. The player collects a note by walking onto its revealed cell. These clues are a fixed set in the current version.
+
+There are no separate easy, medium and hard levels yet. Progression comes from moving between excavation and country challenges, collecting information, and finally combining that information at the castle.
+
+## Time limit and guesses
+
+Digging has no time limit. For each surface visit, a **60-second countdown** starts when the world map first loads successfully. This gives the player time to examine the photograph before opening the map. After the countdown starts, returning to the photograph or switching tabs does not pause it.
+
+Regular country tasks allow **one guess**. A wrong answer or timeout gives no reward, but the player can return underground and continue.
+
+The final task allows **three guesses within the same 60 seconds**. The timer does not restart after a wrong guess. Running out of time or using all three guesses ends the game. A correct answer rescues the princess and starts the ending sequence.
+
+## Scoring and high scores
+
+| Result | Points and reward |
+| --- | --- |
+| Correct regular answer | 100 + 2 × displayed seconds remaining, and one bomb |
+| Wrong regular answer or timeout | No points or bomb |
+| Correct final answer | 300 + 2 × displayed seconds remaining |
+| Final failure | The game ends with the points already earned |
+
+The time bonus rewards quicker answers. High scores are saved when a game ends, using `localStorage`. Games with different numbers of stages have separate records. Scores are stored in the current browser; they do not transfer to another browser or device.
 
 ## Controls
 
 | Input | Action |
-|---|---|
-| Arrow keys / WASD | Face or move in a cardinal direction |
-| Space / action button | Use the selected tool |
+| --- | --- |
+| WASD / arrow keys | Turn or move |
+| Space | Use the selected tool |
 | 1 / 2 | Select shovel / bomb |
-| Tap adjacent cell | Dig, move or place the selected bomb |
-| Tap distant cell | Mark a target |
-| Drag map / + and − | Pan / zoom |
-| Video buttons / Escape | Play, mute or skip a cinematic |
+| Click or tap an adjacent cell | Dig, move or place a bomb |
+| Click or tap a distant cell | Mark a target |
+| On-screen direction and action buttons | Move and use tools on touchscreens |
+| Drag the map | Pan |
+| + / − buttons | Zoom |
 
-## Technologies, libraries and open data
+## Technologies and geographical data
 
-The implementation uses plain **HTML, CSS and JavaScript**, Canvas 2D, DOM APIs, Pointer Events, Web Audio, HTML video and localStorage. **No third-party JavaScript library is currently required.** Canvas is a browser API, not a library. Leaflet, OpenLayers and advanced visualisation libraries are not claimed as dependencies or bonus features.
+The game uses **HTML, CSS and JavaScript**. Excavation and the world map are drawn with the browser's Canvas 2D API. Other browser features used include Pointer Events, Web Audio, HTML video and `localStorage`.
 
-Country boundaries are loaded from the local `assets/countries.geojson`, using Natural Earth boundaries distributed through [datasets/geo-countries](https://github.com/datasets/geo-countries). [Natural Earth](https://www.naturalearthdata.com/about/terms-of-use/) provides public-domain geographical data. The map uses a simple equirectangular projection; the fictional digging grid is not a real underground route between countries. Polygon hit-testing uses Canvas `isPointInPath` with the even-odd fill rule.
+There are currently **no external JavaScript library dependencies**. The map is rendered directly from GeoJSON rather than through Leaflet or OpenLayers. Country selection uses Canvas `isPointInPath`; the map is displayed with a simple equirectangular projection.
 
-Landmark photographs and character/video artwork are separate game assets; they are not part of the boundary dataset. Photo source and licence credits should be completed using the original download sources before final submission.
+Country boundaries come from [datasets/geo-countries](https://github.com/datasets/geo-countries), which distributes [Natural Earth](https://www.naturalearthdata.com/) data. The downloaded boundaries are stored as `assets/countries.geojson`. ISO country codes are used to compare the selected polygon with the correct answer.
 
-## Three implemented event handlers
+Landmark photographs, character artwork and videos are separate assets. Original photograph sources and licence details still need to be added to the project credits.
 
-1. **`keydown` in `game.js`:** interprets movement keys and Space, updates the player's direction or invokes the selected tool. Form controls are excluded from gameplay shortcuts.
-2. **`pointerup` in `surface.js`:** distinguishes a map tap from a drag, transforms screen coordinates into map coordinates and selects the polygon containing the point.
-3. **`click` on `confirmCountry` in `surface.js`:** checks the time deadline, compares the selected ISO3 country code with the answer, awards points/bombs or subtracts a final guess, and opens the appropriate result.
+## Three event handlers
 
-Custom `geogame:surface`, `geogame:return-to-dig`, `geogame:score` and `geogame:ending` events connect the separate scripts. The video's `ended` event returns control to the game.
+### 1. Keyboard input — `game.js`
 
-## Closures
+A `keydown` listener handles the movement keys and Space. It changes the direction of the character, moves into an open cell or uses the selected tool. It ignores input from form controls so that using the language selector does not move the character.
 
-Each script uses an immediately invoked function expression (IIFE). Event callbacks retain access to that function's lexical scope after initialisation returns. For example, the confirmation callback can read and update `selectedCountry`, `score`, `lives` and `answered` without exposing them as global variables. `setInterval(checkTime, 100)` retains access to the private `deadline`, while cinematic callbacks retain `active`, `endingShown` and `playbackId`. The small shared inventory is deliberately exposed for communication with digging mechanics.
+### 2. Map selection — `surface.js`
+
+A `pointerup` listener checks whether the player tapped the map or dragged it. For a tap, the pointer position is converted to canvas coordinates and checked against country polygons. The selected country is then shown in the confirmation message.
+
+### 3. Confirming a guess — `surface.js`
+
+The confirmation button's `click` listener checks the remaining time and compares the selected country's ISO3 code with the answer. It updates the score and bomb inventory after a correct regular answer. At the castle, it either subtracts a guess or opens the rescue sequence.
+
+## How I used closures
+
+The scripts are organised inside immediately invoked function expressions (IIFEs). Event listeners can still access variables defined in these functions after setup has finished.
+
+For example, the country-confirmation callback uses `selectedCountry`, `score`, `lives` and `answered` from its surrounding scope. The timer callback also keeps access to `deadline`. This lets the callbacks share the state they need without making every variable global.
 
 ## DOM interaction
 
-`getElementById` and `querySelector` locate controls. `createElement` and `appendChild` construct surface scenes, the HUD and notebook entries. `textContent` updates messages, counters and clue text; `hidden` switches between scenes; `classList` changes blur and low-time styling. `addEventListener` connects user actions to state changes. Canvas draws the excavation and map within DOM canvas elements. Static templates use `innerHTML`; clue text is copied with `textContent`.
+I use `getElementById` and `querySelector` to find controls and scene elements. Surface screens and notebook entries are created with `createElement` and added to the page with `appendChild`.
+
+Messages, clue text and counters are updated through `textContent`. The `hidden` property controls which scene is visible, while `classList` controls effects such as photograph blur and transitions. The game grid and country polygons are drawn inside canvas elements rather than created as individual HTML elements.
 
 ## What I learned from AI
 
-ChatGPT assisted with planning, code examples and debugging. Through this work I learned how event handlers connect input to game state, how closures keep state private, how the DOM updates interface elements, and why coordinate conversion is needed for map hit-testing. I also learned to handle video autoplay restrictions, asynchronous data loading and timer deadlines, and to document implemented features separately from planned work. I selected the story, supplied the assets and reviewed the proposed changes.
+I used ChatGPT during development to discuss design choices, develop code and troubleshoot issues. Working through these changes helped me understand event handlers, closures and DOM updates, as well as how pointer positions are converted into map coordinates. Debugging missing assets also taught me to check file paths and names carefully.
 
-**AI interaction URL:** TODO — insert the actual shared ChatGPT conversation link before submission. This placeholder is not a submitted reference.
+[Follow-up code review and learning discussion](https://chatgpt.com/share/6b031a82-e084-83ed-8b64-f7826d59b643)
 
-## Run and publish
+## Running the project
 
-Keep `index.html`, `style.css`, `game.js`, `surface.js` and `cinematics.js` at the repository root. Retain the existing `assets` directory:
+The main files are:
 
-- `assets/characters/characters.png` — combined artwork, prince left / princess right.
-- `assets/countries.geojson` — country polygons with ISO3166-1-Alpha-3 properties.
-- `assets/landmarks/` — athens.jpg, türkiye.jpg, china.jpg, barcelona.jpg, usa.jpg, peru.jpg, french.jpg, england.jpg, india.jpg, australia.jpg.
-- `assets/videos/intro.mp4` and `assets/videos/ending.mp4` — normal-speed videos with original sound.
+| File | Purpose |
+| --- | --- |
+| `index.html` | Page structure and main controls |
+| `style.css` | Layout and styling |
+| `game.js` | Digging, movement, routes, tools and clues |
+| `surface.js` | Country challenges, map, timer and scoring |
+| `cinematics.js` | Videos and closing transitions |
+| `i18n.js` | Interface translations |
 
-Serve locally with VS Code Live Server or `python3 -m http.server 8000`; open http://localhost:8000. Do not rely on opening index.html via file:// because the map is fetched. Publish the main branch root through GitHub Pages. Preserve real development history with meaningful commits; do not fabricate past commits.
+Keep these files at the project root, alongside the `assets` and `docs` folders. The character image is stored at `assets/characters/characters.png`, and the two videos at `assets/videos/intro.mp4` and `assets/videos/ending.mp4`. Landmark photographs belong in `assets/landmarks`.
 
-## Further development
+Open the project using VS Code Live Server, or run the following command from the project folder:
 
-Additional final countries, more varied clues and levels, collectibles, improved character movement and further accessibility work are planned. A five-diamond proposal scene is not implemented in this version. Broad Safari, Firefox and mobile device testing remains part of the final review.
+```bash
+python3 -m http.server 8000
+```
 
-## Submission checklist
+Then open [localhost:8000](http://localhost:8000). A local HTTP server is needed for loading the GeoJSON file. To play from another device, use the published GitHub Pages address at the top of this README.
 
-- Confirm the live Pages URL and register the repository in the course peer-review system.
-- Replace the AI interaction URL placeholder with the real shared conversation link.
-- Complete original photo credits and test the actual image, GeoJSON and video assets online.
-- Review the documented rules against the deployed build and retain regular Git commits.
+## Current status and next steps
 
+The game is still being developed. The current version includes the digging and country-selection loop, randomised excavation routes, a fixed final destination, Turkish/English interface text, scoring and cinematic transitions.
 
-### Interface languages
+My next priorities are to test complete playthroughs on phones and different browsers, check every asset on the published site, and improve readability and controls where needed. Touch controls are included, but broad mobile and cross-browser compatibility has not yet been fully verified.
 
-Use the persistent **Türkçe / English** selector at the top of the screen. Rules, clues, route instructions, map labels, feedback, results and video controls switch without restarting the game or pausing its timer. The preference is saved locally when browser storage is available. `i18n.js` must load before the game scripts. It translates text and accessible labels while preserving the existing DOM controls and gameplay state. Map names use `Intl.DisplayNames` with dataset names as a fallback. Existing MP4 audio and embedded text are not translated.
+A discovery passport, randomised clue pool and changing final countries have not been added. Further features will be considered after the existing version has been tested more thoroughly.
 
-Player-facing instructions do not reveal the destination or the final portal number.
+Before submission, I still need to complete media credits, check that the linked AI discussion is accessible, check the live demo link and register the repository in the course peer-review system. Git commits will be used to track further changes as development continues.
