@@ -149,12 +149,3 @@ python3 -m http.server 8000
 
 Then open [localhost:8000](http://localhost:8000). A local HTTP server is needed for loading the GeoJSON file. To play from another device, use the published GitHub Pages address at the top of this README.
 
-## Current status and next steps
-
-The game is still being developed. The current version includes the digging and country-selection loop, randomised excavation routes, a fixed final destination, Turkish/English interface text, scoring and cinematic transitions.
-
-My next priorities are to test complete playthroughs on phones and different browsers, check every asset on the published site, and improve readability and controls where needed. Touch controls are included, but broad mobile and cross-browser compatibility has not yet been fully verified.
-
-A discovery passport, randomised clue pool and changing final countries have not been added. Further features will be considered after the existing version has been tested more thoroughly.
-
-Before submission, I still need to complete media credits, check that the linked AI discussion is accessible, check the live demo link and register the repository in the course peer-review system. Git commits will be used to track further changes as development continues.
