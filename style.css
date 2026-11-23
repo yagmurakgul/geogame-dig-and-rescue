@@ -515,3 +515,23 @@ button { min-height: 44px; touch-action: manipulation; }
 .language-bar select:focus-visible{outline:3px solid #edcc94;outline-offset:2px;}
 body{padding-top:calc(76px + env(safe-area-inset-top));}
 .surface-screen{top:calc(61px + env(safe-area-inset-top));}
+
+.github-link {
+  display: block;
+  width: fit-content;
+  margin: 12px auto;
+  padding: 8px 14px;
+  border: 1px solid #a68bb5;
+  border-radius: 20px;
+  color: #f4e8ff;
+  background: #30243d;
+  font: 14px system-ui, sans-serif;
+  text-decoration: none;
+}
+
+.github-link:hover,
+.github-link:focus-visible {
+  background: #493458;
+  outline: 2px solid #e9c98b;
+  outline-offset: 3px;
+}
